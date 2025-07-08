@@ -1,15 +1,36 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BarChart, Droplet, Beaker, FlaskConical, Sun, Moon, FileText, Bot, Plus, X, ChevronDown, Book, Package, SlidersHorizontal, Settings, Trash2, Upload, Download, AlertCircle, CheckCircle, Info, Wind, Sparkles, Calculator, Percent, TestTube2 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Droplet, Beaker, FlaskConical, Sun, Moon, FileText, Bot, Plus, X, ChevronDown, Book, Package, SlidersHorizontal, Settings, Trash2, Upload, Download, AlertCircle, CheckCircle, Info, Wind, Sparkles, Calculator, Percent, TestTube2, ClipboardList, LogIn, LogOut, RefreshCw, Edit, Save, Thermometer, Activity } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Bar } from 'recharts';
 
-// --- DATOS INICIALES DE EJEMPLO ---
+// --- HOOK FOR LOCALSTORAGE PERSISTENCE ---
+function useStickyState(defaultValue, key) {
+  const [value, setValue] = useState(() => {
+    try {
+      const stickyValue = window.localStorage.getItem(key);
+      return stickyValue !== null
+        ? JSON.parse(stickyValue)
+        : defaultValue;
+    } catch (error) {
+      console.error(`Error parsing localStorage key "${key}":`, error);
+      return defaultValue;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Error setting localStorage key "${key}":`, error);
+    }
+  }, [key, value]);
+  return [value, setValue];
+}
+
+
+// --- INITIAL EXAMPLE DATA (FOR FIRST USE ONLY) ---
 const initialInventory = [
-  { id: 1, name: 'Levadura EC-1118', brand: 'Lalvin', quantity: 50, unit: 'g', expiry: '2025-12-31' },
-  { id: 2, name: 'Nutriente (Fermaid K)', brand: 'Scott Labs', quantity: 100, unit: 'g', expiry: '2026-06-30' },
-  { id: 3, name: 'Uva Merlot', brand: 'Viñedo Local', quantity: 25, unit: 'kg', expiry: '2025-09-15' },
-  { id: 4, name: 'Azúcar Refinada', brand: 'Genérico', quantity: 5, unit: 'kg', expiry: '2027-01-01' },
-  { id: 5, name: 'Ácido Cítrico', brand: 'Genérico', quantity: 200, unit: 'g', expiry: '2026-01-01' },
-  { id: 6, name: 'Enzima Péctica', brand: 'Genérico', quantity: 50, unit: 'g', expiry: '2026-01-01' },
+  { id: 1, name: 'Nutriente (Fermaid K)', brand: 'Scott Labs', quantity: 100, unit: 'g', expiry: '2026-06-30' },
+  { id: 2, name: 'Uva Merlot', brand: 'Viñedo Local', quantity: 25, unit: 'kg', expiry: '2025-09-15' },
+  { id: 3, name: 'Azúcar Refinada', brand: 'Genérico', quantity: 5, unit: 'kg', expiry: '2027-01-01' },
 ];
 
 const initialLots = [
@@ -17,114 +38,33 @@ const initialLots = [
     id: 1,
     name: 'Merlot Experimental 2025',
     creationDate: '2025-07-01',
+    yeast: 'EC-1118',
     mosto: { pulpa: 20, pulpaBrix: 22, agua: 5, ph: 3.5 },
     ajustes: { azucar: 1, sgInicial: 1.090, bxInicial: 21.8, tempInicial: 22 },
     ingredientes: [
-      { id: 1, name: 'Levadura EC-1118', quantity: 10, unit: 'g' },
-      { id: 2, name: 'Nutriente (Fermaid K)', quantity: 5, unit: 'g' },
+      { name: 'Nutriente (Fermaid K)', quantity: 5, unit: 'g' },
     ],
     fermentationLog: [
-      { date: '2025-07-01', sg: 1.090, temp: 22, notes: 'Mosto preparado y levadura inoculada.' },
-      { date: '2025-07-03', sg: 1.075, temp: 24, notes: 'Fermentación activa, burbujeo constante.' },
-      { date: '2025-07-05', sg: 1.050, temp: 25, notes: 'Aromas frutales intensos.' },
-      { date: '2025-07-08', sg: 1.025, temp: 23, notes: 'La actividad ha disminuido un poco.' },
-      { date: '2025-07-12', sg: 1.010, temp: 21, notes: 'Fermentación casi completa.' },
-      { date: '2025-07-15', sg: 0.998, temp: 20, notes: 'Fermentación finalizada. Se prepara para el primer trasiego.' },
+      { id: 1, date: '2025-07-01', sg: 1.090, brix: 21.8, temp: 22, notes: 'Mosto preparado y levadura inoculada.' },
+      { id: 2, date: '2025-07-03', sg: 1.075, brix: 18.8, temp: 24, notes: 'Fermentación activa, burbujeo constante.' },
+      { id: 3, date: '2025-07-05', sg: 1.050, brix: 12.8, temp: 25, notes: 'Aromas frutales intensos.' },
+      { id: 4, date: '2025-07-08', sg: 1.025, brix: 6.5, temp: 23, notes: 'La actividad ha disminuido un poco.' },
+      { id: 5, date: '2025-07-12', sg: 1.010, brix: 2.6, temp: 21, notes: 'Fermentación casi completa.' },
+      { id: 6, date: '2025-07-15', sg: 0.998, brix: -0.5, temp: 20, notes: 'Fermentación finalizada. Se prepara para el primer trasiego.' },
     ],
     status: 'Completado',
   },
-  {
-    id: 2,
-    name: 'Hidromiel con Naranja',
-    creationDate: '2025-07-10',
-    mosto: { pulpa: 0, pulpaBrix: 0, agua: 18, ph: 4.0 },
-    ajustes: { azucar: 5, sgInicial: 1.105, bxInicial: 25, tempInicial: 20 },
-    ingredientes: [
-        { id: 4, name: 'Miel Pura', quantity: 5, unit: 'kg' },
-        { id: 1, name: 'Levadura D-47', quantity: 8, unit: 'g' },
-    ],
-    fermentationLog: [
-      { date: '2025-07-10', sg: 1.105, temp: 20, notes: 'Iniciado.' },
-      { date: '2025-07-14', sg: 1.088, temp: 21, notes: 'Actividad vigorosa.' },
-    ],
-    status: 'En Fermentación',
-  }
 ];
 
-// --- UTILIDADES ---
+// --- UTILITIES ---
 const parseNumericInput = (value) => {
     if (typeof value !== 'string') return value;
     let parsed = value.replace(',', '.');
-    if (parsed.startsWith('.')) {
-        parsed = '0' + parsed;
-    }
-    return parsed;
+    if (parsed.startsWith('.')) parsed = '0' + parsed;
+    return isNaN(parseFloat(parsed)) ? '' : parsed;
 };
 
-const sgToBrix = (sg) => (259.3 * sg - 259.3) / sg;
-const brixToSg = (brix) => (brix / (259.3 - 0.8493 * brix)) + 1;
-
-// --- COMPONENTES DE LA UI ---
-
-const WelcomeScreen = ({ theme }) => {
-    return (
-        <div className={`fixed inset-0 z-[100] flex flex-col justify-end items-center text-white overflow-hidden`}>
-            <style>{`
-                .welcome-container {
-                    width: 100%;
-                    height: 100%;
-                    position: relative;
-                    background-color: ${theme === 'dark' ? '#111827' : '#f9fafb'};
-                    animation: fade-out-container 1s ease-out 4.5s forwards;
-                }
-                .wine-svg {
-                    position: absolute;
-                    bottom: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                }
-                .wine-fill {
-                    fill: #701a2e;
-                    transform-origin: bottom;
-                    animation: fill-up 3s ease-in-out forwards;
-                }
-                @keyframes fill-up {
-                    from { transform: translateY(100%); }
-                    to { transform: translateY(0%); }
-                }
-                .welcome-text {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    text-align: center;
-                    color: rgba(255, 255, 255, 0.9);
-                    animation: text-fade-in 2s ease-in 1.5s forwards;
-                    opacity: 0;
-                }
-                @keyframes text-fade-in {
-                    to { opacity: 1; }
-                }
-                @keyframes fade-out-container {
-                    to { opacity: 0; pointer-events: none; }
-                }
-            `}</style>
-            <div className="welcome-container">
-                <svg className="wine-svg" preserveAspectRatio="none" viewBox="0 0 1440 800">
-                    <path className="wine-fill" transform="translate(0, 0)">
-                        <animate attributeName="d" dur="2s" repeatCount="indefinite"
-                            values="M0,800 L1440,800 L1440,100 C1120,140 800,60 480,100 C160,140 0,60 0,100 Z; M0,800 L1440,800 L1440,100 C1120,60 800,140 480,100 C160,60 0,140 0,100 Z; M0,800 L1440,800 L1440,100 C1120,140 800,60 480,100 C160,140 0,60 0,100 Z;" />
-                    </path>
-                </svg>
-                <div className="welcome-text">
-                    <h1 className="text-6xl font-bold mb-2">VinoApp</h1>
-                    <p className="text-2xl">Tu asistente de vinificación</p>
-                </div>
-            </div>
-        </div>
-    );
-};
+// --- UI COMPONENTS ---
 
 const Modal = ({ children, isOpen, onClose, title }) => {
   if (!isOpen) return null;
@@ -143,12 +83,16 @@ const Modal = ({ children, isOpen, onClose, title }) => {
   );
 };
 
-const CrearIngredienteModal = ({ onSave, onClose }) => {
+const CrearItemInventarioModal = ({ onSave, onClose, itemToEdit }) => {
     const [item, setItem] = useState({ name: '', brand: '', quantity: '', unit: 'g', expiry: '' });
+
+    useEffect(() => {
+        if (itemToEdit) setItem(itemToEdit);
+    }, [itemToEdit]);
     
     const handleSave = (e) => {
         e.preventDefault();
-        onSave({ ...item, id: Date.now() });
+        onSave({ ...item, id: item.id || `item-${Date.now()}` });
     };
 
     return (
@@ -158,7 +102,7 @@ const CrearIngredienteModal = ({ onSave, onClose }) => {
             <div className="flex gap-2">
                 <input type="number" placeholder="Cantidad en stock" value={item.quantity} onChange={e => setItem({...item, quantity: parseNumericInput(e.target.value)})} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" required/>
                 <select value={item.unit} onChange={e => setItem({...item, unit: e.target.value})} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2">
-                    <option>g</option><option>kg</option><option>mL</option><option>L</option>
+                    <option>g</option><option>kg</option><option>mL</option><option>L</option><option>unidades</option>
                 </select>
             </div>
             <input type="date" value={item.expiry} onChange={e => setItem({...item, expiry: e.target.value})} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
@@ -170,111 +114,66 @@ const CrearIngredienteModal = ({ onSave, onClose }) => {
     );
 };
 
-const CrearLoteForm = ({ onSave, onClose, inventory, onInventoryUpdate }) => {
+
+const CrearLoteForm = ({ onSave, onClose, inventory, batchToEdit }) => {
   const [lote, setLote] = useState({
     name: '',
+    creationDate: new Date().toISOString().split('T')[0],
     mosto: { pulpa: '', pulpaBrix: '', agua: '', ph: '' },
     ajustes: { azucar: '', sgInicial: '', bxInicial: '', tempInicial: '' },
     ingredientes: [],
+    yeast: '',
   });
-  const [isCreatingIngredient, setIsCreatingIngredient] = useState(false);
+
+  useEffect(() => {
+    if (batchToEdit) {
+        setLote(batchToEdit);
+    }
+  }, [batchToEdit]);
 
   const handleInputChange = (category, field, value) => {
     const parsedValue = parseNumericInput(value);
-    setLote(prev => ({
-      ...prev,
-      [category]: { ...prev[category], [field]: parsedValue }
-    }));
+    setLote(prev => ({ ...prev, [category]: { ...prev[category], [field]: parsedValue } }));
   };
   
   const handleAddIngrediente = () => {
-    setLote(prev => ({
-      ...prev,
-      ingredientes: [...prev.ingredientes, { id: Date.now(), name: '', quantity: '', unit: 'g' }]
-    }));
+    setLote(prev => ({ ...prev, ingredientes: [...prev.ingredientes, { id: Date.now(), name: '', quantity: '', unit: 'g' }] }));
   };
 
   const handleIngredienteChange = (index, field, value) => {
     const newIngredientes = [...lote.ingredientes];
     newIngredientes[index][field] = value;
-    if (field === 'name') {
-        if (value === 'CREATE_NEW') {
-            setIsCreatingIngredient(true);
-            newIngredientes[index].name = ''; // Reset selection
-        } else {
-            const selectedItem = inventory.find(item => item.name === value);
-            if (selectedItem) {
-                newIngredientes[index].unit = selectedItem.unit;
-            }
-        }
-    }
+    const selectedItem = inventory.find(item => item.name === value);
+    if (selectedItem) newIngredientes[index].unit = selectedItem.unit;
     setLote(prev => ({ ...prev, ingredientes: newIngredientes }));
   };
   
-  const handleSaveNewIngredient = (newIngredient) => {
-    onInventoryUpdate(prev => [...prev, newIngredient]);
-    setIsCreatingIngredient(false);
-  };
-
-  const handleRemoveIngrediente = (index) => {
-    const newIngredientes = lote.ingredientes.filter((_, i) => i !== index);
-    setLote(prev => ({ ...prev, ingredientes: newIngredientes }));
-  };
-
-  const { brixFinalEstimado, alcoholPotencial } = useMemo(() => {
-    const pulpaKg = parseFloat(lote.mosto.pulpa) || 0;
-    const pulpaBrix = parseFloat(lote.mosto.pulpaBrix) || 0;
-    const aguaL = parseFloat(lote.mosto.agua) || 0;
-    const azucarKg = parseFloat(lote.ajustes.azucar) || 0;
-
-    const azucarEnPulpaKg = pulpaKg * (pulpaBrix / 100);
-    const azucarTotalKg = azucarEnPulpaKg + azucarKg;
-
-    // Asumir densidad del agua = 1 kg/L.
-    const pesoTotalKg = pulpaKg + aguaL;
-
-    if (pesoTotalKg === 0) return { brixFinalEstimado: 0, alcoholPotencial: 0 };
-    
-    // El azúcar añadido aumenta la masa total de la solución
-    const pesoSolucionFinalKg = pesoTotalKg + azucarKg;
-
-    const brixFinal = (azucarTotalKg / pesoSolucionFinalKg) * 100;
-    const alcohol = brixFinal * 0.57; // Estimación común
-
-    return {
-      brixFinalEstimado: brixFinal.toFixed(2),
-      alcoholPotencial: alcohol.toFixed(2)
-    };
-  }, [lote.mosto, lote.ajustes.azucar]);
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    const newLote = {
-      ...lote,
-      id: Date.now(),
-      creationDate: new Date().toISOString().split('T')[0],
-      fermentationLog: [{
-        date: new Date().toISOString().split('T')[0],
-        sg: lote.ajustes.sgInicial || (lote.ajustes.bxInicial ? brixToSg(lote.ajustes.bxInicial).toFixed(3) : ''),
-        temp: lote.ajustes.tempInicial,
-        notes: 'Lote creado.'
-      }],
-      status: 'En Preparación'
+    const loteData = batchToEdit ? { ...lote } : {
+        ...lote,
+        id: lote.id || Date.now(),
+        fermentationLog: lote.fermentationLog && lote.fermentationLog.length > 0 ? lote.fermentationLog : [{
+            id: Date.now(),
+            date: new Date().toISOString().split('T')[0],
+            sg: lote.ajustes.sgInicial,
+            brix: lote.ajustes.bxInicial,
+            temp: lote.ajustes.tempInicial,
+            notes: 'Lote creado.'
+        }],
+        status: lote.status || 'En Preparación'
     };
-    onSave(newLote);
+    onSave(loteData);
   };
-
+  
   return (
-    <>
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del Lote</label>
-          <input type="text" value={lote.name} onChange={e => setLote({...lote, name: e.target.value})} className="mt-1 block w-full bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2" required />
+          <label className="block text-sm font-medium">Nombre del Lote</label>
+          <input type="text" value={lote.name} onChange={e => setLote({...lote, name: e.target.value})} className="mt-1 block w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" required />
         </div>
-
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Composición del Mosto</h3>
+        <div className="p-4 border rounded-lg">
+            <h3 className="text-lg font-semibold mb-2">Composición del Mosto</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="text" placeholder="Pulpa/Fruta (kg)" value={lote.mosto.pulpa} onChange={e => handleInputChange('mosto', 'pulpa', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
                 <input type="text" placeholder="°Brix de la pulpa" value={lote.mosto.pulpaBrix} onChange={e => handleInputChange('mosto', 'pulpaBrix', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
@@ -283,240 +182,464 @@ const CrearLoteForm = ({ onSave, onClose, inventory, onInventoryUpdate }) => {
             </div>
         </div>
         
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Ajustes y Objetivos</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" placeholder="Azúcar añadido (kg)" value={lote.ajustes.azucar} onChange={e => handleInputChange('ajustes', 'azucar', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                <input type="text" placeholder="SG Inicial (ej. 1.090)" value={lote.ajustes.sgInicial} onChange={e => handleInputChange('ajustes', 'sgInicial', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                <input type="text" placeholder="Brix Inicial (ej. 21.8)" value={lote.ajustes.bxInicial} onChange={e => handleInputChange('ajustes', 'bxInicial', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                <input type="text" placeholder="Temp. Inicial (°C)" value={lote.ajustes.tempInicial} onChange={e => handleInputChange('ajustes', 'tempInicial', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-4 text-center">
-                <div className="bg-indigo-50 dark:bg-indigo-900/50 p-3 rounded-lg">
-                    <p className="text-sm text-indigo-800 dark:text-indigo-200">Brix Final Estimado</p>
-                    <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">{brixFinalEstimado}°</p>
-                </div>
-                <div className="bg-green-50 dark:bg-green-900/50 p-3 rounded-lg">
-                    <p className="text-sm text-green-800 dark:text-green-200">Alcohol Potencial</p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-300">{alcoholPotencial}%</p>
-                </div>
-            </div>
+        <div className="p-4 border rounded-lg space-y-2">
+            <h3 className="text-lg font-semibold">Levadura</h3>
+            <input type="text" placeholder="Nombre de la levadura (ej. EC-1118)" value={lote.yeast} onChange={e => setLote(prev => ({...prev, yeast: e.target.value}))} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" required/>
         </div>
 
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Ingredientes</h3>
+        <div className="p-4 border rounded-lg">
+            <h3 className="text-lg font-semibold mb-2">Otros Ingredientes</h3>
             {lote.ingredientes.map((ing, index) => (
-                <div key={ing.id} className="flex items-center gap-2 mb-2">
+                <div key={index} className="flex items-center gap-2 mb-2">
                     <select value={ing.name} onChange={e => handleIngredienteChange(index, 'name', e.target.value)} className="flex-grow bg-gray-100 dark:bg-gray-700 rounded-md p-2">
-                        <option value="">Seleccionar del inventario</option>
+                        <option value="">Seleccionar ingrediente</option>
                         {inventory.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
-                        <option value="CREATE_NEW" className="font-bold text-indigo-600">--- Crear Nuevo Ingrediente ---</option>
                     </select>
                     <input type="text" placeholder="Cant." value={ing.quantity} onChange={e => handleIngredienteChange(index, 'quantity', e.target.value)} className="w-20 bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
                     <input type="text" value={ing.unit} readOnly className="w-16 bg-gray-200 dark:bg-gray-600 rounded-md p-2 text-center" />
-                    <button type="button" onClick={() => handleRemoveIngrediente(index)} className="text-red-500 hover:text-red-700 p-2"><Trash2 size={18}/></button>
+                    <button type="button" onClick={() => setLote(prev => ({...prev, ingredientes: prev.ingredientes.filter((_, i) => i !== index)}))} className="text-red-500 p-2"><Trash2 size={18}/></button>
                 </div>
             ))}
-            <button type="button" onClick={handleAddIngrediente} className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Añadir Ingrediente</button>
+            <button type="button" onClick={handleAddIngrediente} className="mt-2 text-sm text-indigo-600">Añadir Ingrediente</button>
         </div>
-      </div>
-      <div className="mt-8 flex justify-end gap-4">
-        <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500">Cancelar</button>
-        <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Guardar Lote</button>
-      </div>
+        <div className="mt-8 flex justify-end gap-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600">Cancelar</button>
+            <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white">{batchToEdit ? 'Actualizar Lote' : 'Guardar Lote'}</button>
+        </div>
     </form>
-    <Modal isOpen={isCreatingIngredient} onClose={() => setIsCreatingIngredient(false)} title="Crear Nuevo Ingrediente">
-        <CrearIngredienteModal onSave={handleSaveNewIngredient} onClose={() => setIsCreatingIngredient(false)} />
-    </Modal>
-    </>
   );
 };
 
-const LoteDetalle = ({ lote, onUpdate, onClose, onAnalyze, onExportPDF, isPdfReady }) => {
-  const [newLog, setNewLog] = useState({ date: new Date().toISOString().split('T')[0], value: '', temp: '', notes: '' });
-  const [newLogMode, setNewLogMode] = useState('sg');
+
+const LoteDetalle = ({ lote, onUpdate, onClose, onAnalyze, onEdit, onDelete }) => {
+  const [newLog, setNewLog] = useState({ date: new Date().toISOString().split('T')[0], sg: '', brix: '', temp: '', notes: '' });
+  const [editingLog, setEditingLog] = useState(null);
+  const [activeTab, setActiveTab] = useState('grafica');
   const [graphMode, setGraphMode] = useState('sg');
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
 
-  const handleAddLog = (e) => {
-    e.preventDefault();
-    if (!newLog.value || !newLog.temp) return;
+  const formulation = useMemo(() => {
+    const pulpaKg = parseFloat(lote.mosto.pulpa) || 0;
+    const aguaL = parseFloat(lote.mosto.agua) || 0;
+    const azucarKg = parseFloat(lote.ajustes.azucar) || 0;
+    const totalVolumeL = aguaL + (pulpaKg * 0.7); // Approximation: 1kg fruit ~ 0.7L volume
+    const totalWeightKg = pulpaKg + aguaL + azucarKg;
     
-    let sgValue;
-    if (newLogMode === 'bx') {
-        sgValue = brixToSg(parseFloat(newLog.value)).toFixed(3);
-    } else {
-        sgValue = parseNumericInput(newLog.value);
-    }
+    const pulpaPercent = totalWeightKg > 0 ? (pulpaKg / totalWeightKg) * 100 : 0;
 
-    const updatedLote = {
-      ...lote,
-      fermentationLog: [...lote.fermentationLog, { date: newLog.date, sg: sgValue, temp: newLog.temp, notes: newLog.notes }].sort((a,b) => new Date(a.date) - new Date(b.date)),
+    const getConcentration = (item) => {
+        if (!item || totalVolumeL === 0) return 'N/A';
+        let amountInGrams = parseFloat(item.quantity) || 0;
+        if (item.unit === 'kg') amountInGrams *= 1000;
+        return `${(amountInGrams / totalVolumeL).toFixed(2)} g/L`;
     };
-    onUpdate(updatedLote);
-    setNewLog({ date: new Date().toISOString().split('T')[0], value: '', temp: '', notes: '' });
+
+    return { pulpaPercent, totalVolumeL, getConcentration };
+  }, [lote]);
+
+  const handleLogChange = (field, value) => {
+    const stateToUpdate = editingLog ? setEditingLog : setNewLog;
+    const originalLog = editingLog || newLog;
+    const updatedLog = { ...originalLog, [field]: parseNumericInput(value) };
+    stateToUpdate(updatedLog);
+  };
+
+  const handleSaveLog = (e) => {
+    e.preventDefault();
+    let updatedLogs;
+    if (editingLog) {
+        updatedLogs = lote.fermentationLog.map(log => log.id === editingLog.id ? editingLog : log);
+        setEditingLog(null);
+    } else {
+        const logToAdd = { ...newLog, id: Date.now() };
+        updatedLogs = [...lote.fermentationLog, logToAdd];
+    }
+    onUpdate({ ...lote, fermentationLog: updatedLogs.sort((a,b) => new Date(a.date) - new Date(b.date)) });
+    setNewLog({ date: new Date().toISOString().split('T')[0], sg: '', brix: '', temp: '', notes: '' });
+  };
+
+  const handleDeleteLog = (logId) => {
+    if (window.confirm('¿Seguro que quieres eliminar este registro?')) {
+        const updatedLogs = lote.fermentationLog.filter(log => log.id !== logId);
+        onUpdate({ ...lote, fermentationLog: updatedLogs });
+    }
   };
   
   const handleStatusChange = (e) => {
     onUpdate({ ...lote, status: e.target.value });
   };
-
-  const alcoholActual = useMemo(() => {
-    const og = lote.ajustes.sgInicial;
-    const fg = lote.fermentationLog[lote.fermentationLog.length - 1].sg;
-    if (og && fg) {
-      return ((og - fg) * 131.25).toFixed(2);
-    }
-    return '0.00';
-  }, [lote]);
-
+  
   const graphData = useMemo(() => {
+    if (!lote || !lote.fermentationLog) return [];
     return lote.fermentationLog.map(log => ({
         ...log,
-        value: graphMode === 'sg' ? log.sg : sgToBrix(log.sg).toFixed(1)
+        sg: parseFloat(log.sg) || 0,
+        brix: parseFloat(log.brix) || 0,
+        temp: parseFloat(log.temp) || 0
     }));
-  }, [lote.fermentationLog, graphMode]);
+  }, [lote.fermentationLog]);
 
-  const handleInitiateExport = () => {
-      setIsExportModalOpen(true);
-  };
-
-  const handleConfirmExport = async (options) => {
-      setIsExporting(true);
-      await onExportPDF(lote, options);
-      setIsExporting(false);
-      setIsExportModalOpen(false);
-  };
+  const TabButton = ({ id, label }) => (
+    <button onClick={() => setActiveTab(id)} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+        {label}
+    </button>
+  );
 
   return (
     <div>
         <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Estado del Lote</h3>
+            <h3 className="text-lg font-semibold">Estado del Lote</h3>
             <select value={lote.status} onChange={handleStatusChange} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2 text-sm">
-                <option>En Preparación</option>
-                <option>En Fermentación</option>
-                <option>Completado</option>
+                <option>En Preparación</option><option>En Fermentación</option><option>Completado</option>
             </select>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center">
-            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">SG Inicial</p>
-                <p className="text-xl font-bold text-gray-800 dark:text-gray-200">{lote.ajustes.sgInicial || 'N/A'}</p>
-            </div>
-            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">SG Actual</p>
-                <p className="text-xl font-bold text-gray-800 dark:text-gray-200">{lote.fermentationLog[lote.fermentationLog.length - 1].sg || 'N/A'}</p>
-            </div>
-            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Temp. Actual</p>
-                <p className="text-xl font-bold text-gray-800 dark:text-gray-200">{lote.fermentationLog[lote.fermentationLog.length - 1].temp}°C</p>
-            </div>
-            <div className="bg-green-100 dark:bg-green-900/50 p-3 rounded-lg">
-                <p className="text-sm text-green-600 dark:text-green-400">Alcohol Actual (ABV)</p>
-                <p className="text-xl font-bold text-green-700 dark:text-green-300">{alcoholActual}%</p>
-            </div>
+
+        <div className="border-b border-gray-200 dark:border-gray-700 mb-4">
+            <nav className="-mb-px flex space-x-4"><TabButton id="grafica" label="Gráfica"/><TabButton id="formulacion" label="Formulación"/><TabButton id="registros" label="Registros"/></nav>
         </div>
 
-        <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Curva de Fermentación</h3>
-                <div className="flex gap-1 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg">
-                    <button onClick={() => setGraphMode('sg')} className={`px-2 py-1 text-xs rounded-md ${graphMode === 'sg' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>SG</button>
-                    <button onClick={() => setGraphMode('brix')} className={`px-2 py-1 text-xs rounded-md ${graphMode === 'brix' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>Brix</button>
+        {activeTab === 'grafica' && (
+            <div className="w-full h-64 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg">
+                <div className="flex justify-end mb-2">
+                    <div className="flex gap-1 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg">
+                        <button onClick={() => setGraphMode('sg')} className={`px-2 py-1 text-xs rounded-md ${graphMode === 'sg' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>SG</button>
+                        <button onClick={() => setGraphMode('brix')} className={`px-2 py-1 text-xs rounded-md ${graphMode === 'brix' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>Brix</button>
+                    </div>
+                </div>
+                <LineChart width={550} height={230} data={graphData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.2)" />
+                    <XAxis dataKey="date" tickFormatter={(d) => new Date(d).toLocaleDateString()} />
+                    <YAxis yAxisId="left" dataKey={graphMode} tick={{ fill: '#8884d8' }} />
+                    <YAxis yAxisId="right" orientation="right" dataKey="temp" tick={{ fill: '#82ca9d' }} />
+                    <Tooltip />
+                    <Legend />
+                    <Line yAxisId="left" type="monotone" dataKey={graphMode} name={graphMode.toUpperCase()} stroke="#8884d8" dot={false} />
+                    <Line yAxisId="right" type="monotone" dataKey="temp" name="Temp (°C)" stroke="#82ca9d" dot={false} />
+                </LineChart>
+            </div>
+        )}
+
+        {activeTab === 'formulacion' && (
+            <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
+                <h4 className="text-lg font-semibold">Receta del Lote (Vol. ~{formulation.totalVolumeL.toFixed(2)}L)</h4>
+                <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                    <li><b>Pulpa:</b> {lote.mosto.pulpa} kg ({formulation.pulpaPercent.toFixed(1)}% del peso)</li>
+                    <li><b>Agua:</b> {lote.mosto.agua} L</li>
+                    <li><b>Azúcar:</b> {lote.ajustes.azucar} kg</li>
+                    <li><b>Levadura:</b> {lote.yeast}</li>
+                    {lote.ingredientes.map((ing, i) => (
+                        <li key={i}><b>{ing.name}:</b> {ing.quantity} {ing.unit} ({formulation.getConcentration(ing)})</li>
+                    ))}
+                </ul>
+            </div>
+        )}
+
+        {activeTab === 'registros' && (
+            <>
+            <div className="mb-6">
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                    {lote.fermentationLog.map((log) => (
+                        <div key={log.id} className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold">{new Date(log.date).toLocaleDateString()} - SG: {log.sg}, Brix: {log.brix}, Temp: {log.temp}°C</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">{log.notes}</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => setEditingLog(log)} className="p-1 text-blue-500 hover:text-blue-700"><Edit size={16}/></button>
+                                <button onClick={() => handleDeleteLog(log.id)} className="p-1 text-red-500 hover:text-red-700"><Trash2 size={16}/></button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
-            <div className="w-full h-64 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg">
-                <ResponsiveContainer>
-                    <LineChart data={graphData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.2)" />
-                        <XAxis dataKey="date" tick={{ fill: 'var(--text-color-secondary)' }} />
-                        <YAxis yAxisId="left" dataKey="value" domain={['auto', 'auto']} tick={{ fill: 'var(--text-color-secondary)' }} />
-                        <YAxis yAxisId="right" orientation="right" dataKey="temp" tick={{ fill: 'var(--text-color-secondary)' }} />
-                        <Tooltip contentStyle={{ backgroundColor: 'var(--background-color)', border: '1px solid var(--border-color)' }} />
-                        <Legend />
-                        <Line yAxisId="left" type="monotone" dataKey="value" name={graphMode.toUpperCase()} stroke="#8884d8" strokeWidth={2} activeDot={{ r: 8 }} />
-                        <Line yAxisId="right" type="monotone" dataKey="temp" name="Temp (°C)" stroke="#82ca9d" />
-                    </LineChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
+            <form onSubmit={handleSaveLog} className="p-4 border border-dashed rounded-lg space-y-3">
+                <h4 className="font-semibold">{editingLog ? 'Editando Registro' : 'Añadir Nuevo Registro'}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                    <input type="date" value={editingLog ? editingLog.date : newLog.date} onChange={e => handleLogChange('date', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
+                    <input type="text" placeholder="SG" value={editingLog ? editingLog.sg : newLog.sg} onChange={e => handleLogChange('sg', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
+                    <input type="text" placeholder="Brix" value={editingLog ? editingLog.brix : newLog.brix} onChange={e => handleLogChange('brix', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
+                    <input type="text" placeholder="Temp °C" value={editingLog ? editingLog.temp : newLog.temp} onChange={e => handleLogChange('temp', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" required />
+                </div>
+                <textarea placeholder="Notas..." value={editingLog ? editingLog.notes : newLog.notes} onChange={e => handleLogChange('notes', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2 h-16"></textarea>
+                <div className="flex justify-end gap-2">
+                    {editingLog && <button type="button" onClick={() => setEditingLog(null)} className="px-4 py-2 text-sm rounded-lg bg-gray-300 dark:bg-gray-600">Cancelar Edición</button>}
+                    <button type="submit" className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white flex items-center gap-2"><Save size={16}/> {editingLog ? 'Actualizar' : 'Añadir'}</button>
+                </div>
+            </form>
+            </>
+        )}
         
-        <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Registro de Fermentación</h3>
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                {lote.fermentationLog.map((log, index) => (
-                    <div key={index} className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                        <p className="font-semibold">{log.date} - SG: {log.sg}, Temp: {log.temp}°C</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{log.notes}</p>
-                    </div>
-                ))}
-            </div>
-        </div>
-
-        <form onSubmit={handleAddLog} className="p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg space-y-3">
-            <h4 className="font-semibold text-gray-800 dark:text-gray-200">Añadir Nuevo Registro</h4>
-             <div className="flex gap-1 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg w-min">
-                <button type="button" onClick={() => setNewLogMode('sg')} className={`px-2 py-1 text-xs rounded-md ${newLogMode === 'sg' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>SG</button>
-                <button type="button" onClick={() => setNewLogMode('bx')} className={`px-2 py-1 text-xs rounded-md ${newLogMode === 'bx' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>Brix</button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <input type="date" value={newLog.date} onChange={e => setNewLog({...newLog, date: e.target.value})} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                <input type="text" placeholder={newLogMode.toUpperCase()} value={newLog.value} onChange={e => setNewLog({...newLog, value: e.target.value})} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" required />
-                <input type="text" placeholder="Temp °C" value={newLog.temp} onChange={e => setNewLog({...newLog, temp: parseNumericInput(e.target.value)})} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" required />
-            </div>
-            <textarea placeholder="Notas..." value={newLog.notes} onChange={e => setNewLog({...newLog, notes: e.target.value})} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2 h-16"></textarea>
-            <button type="submit" className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 w-full">Añadir Registro</button>
-        </form>
-
         <div className="mt-8 flex flex-wrap justify-end gap-3">
-            <button onClick={() => onAnalyze(lote)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700">
-                <Bot size={18} /> Analizar con IA
-            </button>
-             <button onClick={handleInitiateExport} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
-                <FileText size={18} /> Exportar PDF
-            </button>
-            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500">Cerrar</button>
+            <button onClick={() => onAnalyze(lote)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 text-white"><Bot size={18} /> Analizar</button>
+            <button onClick={() => onEdit(lote)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500 text-white"><Edit size={18} /> Editar</button>
+            <button onClick={() => onDelete(lote)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white"><Trash2 size={18} /> Eliminar</button>
+            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600">Cerrar</button>
         </div>
-        <Modal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} title="Opciones de Exportación de PDF">
-            <PdfExportOptions onConfirm={handleConfirmExport} onCancel={() => setIsExportModalOpen(false)} isExporting={isExporting} />
-        </Modal>
     </div>
   )
 }
 
-const PdfExportOptions = ({ onConfirm, onCancel, isExporting }) => {
-    const [options, setOptions] = useState({
-        includeDetails: true,
-        includeIngredients: true,
-        includeLog: true,
-    });
+const LotesView = ({ lotes, setLotes, inventory, onAnalyze }) => {
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingBatch, setEditingBatch] = useState(null);
+    const [selectedLote, setSelectedLote] = useState(null);
 
-    const handleCheckboxChange = (e) => {
-        const { name, checked } = e.target;
-        setOptions(prev => ({ ...prev, [name]: checked }));
+    const handleSaveLote = (loteData) => {
+        if (lotes.some(l => l.id === loteData.id)) {
+            setLotes(lotes.map(l => l.id === loteData.id ? loteData : l));
+        } else {
+            setLotes([...lotes, loteData]);
+        }
+        setIsFormOpen(false);
+        setEditingBatch(null);
+    };
+
+    const handleEdit = (batch) => {
+        setEditingBatch(batch);
+        setSelectedLote(null);
+        setIsFormOpen(true);
+    };
+
+    const handleDelete = (batch) => {
+        if (window.confirm(`¿Seguro que quieres eliminar el lote "${batch.name}"?`)) {
+            setLotes(lotes.filter(l => l.id !== batch.id));
+            setSelectedLote(null);
+        }
+    };
+    
+    const handleUpdateLote = (updatedLote) => {
+        const newLotes = lotes.map(l => l.id === updatedLote.id ? updatedLote : l);
+        setLotes(newLotes);
+        if (selectedLote && selectedLote.id === updatedLote.id) {
+            setSelectedLote(updatedLote);
+        }
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'En Fermentación': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+            case 'Completado': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+            case 'En Preparación': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+        }
+    };
+    
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Gestión de Lotes</h1>
+                <button onClick={() => { setEditingBatch(null); setIsFormOpen(true); }} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700">
+                    <Plus size={20} /> Crear Lote
+                </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {lotes.map(lote => {
+                    const lastLog = lote.fermentationLog && lote.fermentationLog.length > 0
+                        ? lote.fermentationLog[lote.fermentationLog.length - 1]
+                        : null;
+                    
+                    return (
+                        <div key={lote.id} onClick={() => setSelectedLote(lote)} className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg hover:shadow-xl cursor-pointer flex flex-col justify-between">
+                            <div>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white w-2/3">{lote.name}</h2>
+                                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full h-min ${getStatusColor(lote.status)}`}>{lote.status}</span>
+                                </div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Levadura: <span className="font-semibold">{lote.yeast || 'N/A'}</span></p>
+                            </div>
+                            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3 flex justify-around text-center">
+                                <div>
+                                    <p className="text-xs text-gray-500">SG Actual</p>
+                                    <p className="font-bold text-lg">{lastLog ? lastLog.sg : 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Brix Actual</p>
+                                    <p className="font-bold text-lg">{lastLog ? lastLog.brix : 'N/A'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+            <Modal isOpen={isFormOpen} onClose={() => {setIsFormOpen(false); setEditingBatch(null);}} title={editingBatch ? "Editar Lote" : "Crear Nuevo Lote"}>
+                <CrearLoteForm onSave={handleSaveLote} onClose={() => {setIsFormOpen(false); setEditingBatch(null);}} inventory={inventory} batchToEdit={editingBatch} />
+            </Modal>
+            <Modal isOpen={!!selectedLote} onClose={() => setSelectedLote(null)} title={`Detalle: ${selectedLote?.name}`}>
+                {selectedLote && <LoteDetalle lote={selectedLote} onUpdate={handleUpdateLote} onClose={() => setSelectedLote(null)} onAnalyze={onAnalyze} onEdit={handleEdit} onDelete={handleDelete} />}
+            </Modal>
+        </div>
+    );
+};
+
+const InventarioView = ({ inventory, setInventory }) => {
+    const [isAdding, setIsAdding] = useState(false);
+
+    const handleSaveItem = (item) => {
+        setInventory(prev => [...prev.filter(i => i.id !== item.id), item]);
+        setIsAdding(false);
+    };
+    
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Inventario</h1>
+                <button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700">
+                    <Plus size={20} /> Añadir Artículo
+                </button>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-50 dark:bg-gray-700"><tr className="bg-gray-50 dark:bg-gray-700"><th className="p-4">Artículo</th><th className="p-4">Marca</th><th className="p-4">Cantidad</th><th className="p-4">Vencimiento</th></tr></thead>
+                    <tbody>{inventory.map(item => (<tr key={item.id} className="border-b"><td className="p-4">{item.name}</td><td className="p-4">{item.brand}</td><td className="p-4">{item.quantity} {item.unit}</td><td className="p-4">{item.expiry}</td></tr>))}</tbody>
+                </table>
+            </div>
+            <Modal isOpen={isAdding} onClose={() => setIsAdding(false)} title="Añadir Artículo al Inventario">
+                <CrearItemInventarioModal onSave={handleSaveItem} onClose={() => setIsAdding(false)} />
+            </Modal>
+        </div>
+    );
+};
+
+const VinopediaView = () => {
+    const glossary = {
+        "Vino": "Bebida resultante de la fermentación alcohólica (total o parcial) de la uva fresca o de sus mostos. Grado alcohólico entre 7° y 14° G.L.",
+        "Mosto": "Jugo de uva obtenido por medios físicos, que aún no ha fermentado o cuya fermentación ha sido detenida.",
+        "Acidez Total": "Medida de todos los ácidos presentes en el vino (tartárico, málico, cítrico, etc.). Mínimo 4.00 g/L (expresado en Ác. Tartárico).",
+        "Acidez Volátil": "Ácidos volátiles, principalmente ácido acético. Un exceso indica contaminación. Máximo 1.00 g/L para vinos de mesa y 1.20 g/L para vinos licorosos.",
+        "Anhídrido Sulfuroso (SO2)": "Conservante y antioxidante. Máximo total de 0.25 g/L.",
+        "Trasiego": "Transferir el vino de un recipiente a otro para separarlo de los sedimentos (lías), clarificándolo.",
+        "Lías": "Levaduras muertas y otros sólidos que se depositan en el fondo tras la fermentación.",
+        "Licor de Tiraje": "Mezcla de vino, azúcar y levaduras que se añade para iniciar la segunda fermentación en botella (vinos espumosos).",
+        "Licor de Expedición": "Dosis de vino y azúcar que se añade tras el degüelle para ajustar el dulzor final de un vino espumoso.",
+    };
+
+    const sugarClassifications = [
+        { name: 'Seco', range: 'Hasta 5 g/L' },
+        { name: 'Semiseco o Abocado', range: '> 5 a 55 g/L' },
+        { name: 'Dulce o Generoso', range: '> 55 g/L' },
+    ];
+     const sparklingClassifications = [
+        { name: 'Natural o Nature', range: '0 a 6 g/L' },
+        { name: 'Brut', range: '> 6 a 15 g/L' },
+        { name: 'Semiseco o Demi-Sec', range: '> 15 a 45 g/L' },
+        { name: 'Dulce', range: '> 45 g/L' },
+    ];
+    const alcoholClassifications = [
+        { name: 'Vino de Mesa', range: '7° a 14° G.L.'},
+        { name: 'Vino Desalcoholizado', range: 'Hasta 5° G.L.'},
+        { name: 'Vino Soda', range: '3° a 5° G.L.'},
+        { name: 'Vino Licoroso', range: '> 14° a 20° G.L.'},
+        { name: 'Vino Compuesto', range: '> 14° a 20° G.L.'},
+        { name: 'Destilado de Uva', range: '30° a 43° G.L.'},
+        { name: 'Brandy', range: '40° a 50° G.L.'},
+    ];
+
+    const ClassificationTable = ({ title, data, icon }) => (
+        <div>
+            <h3 className="flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">{icon}{title}</h3>
+            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <table className="w-full">
+                    <thead className="bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Clasificación</th>
+                            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Rango</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800">
+                        {data.map(c => (
+                            <tr key={c.name} className="border-t border-gray-200 dark:border-gray-700">
+                                <td className="px-4 py-2 text-sm font-medium text-gray-800 dark:text-gray-200">{c.name}</td>
+                                <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{c.range}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="space-y-8">
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Vinopedia (Basado en COVENIN 3342-97)</h1>
+            
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Glosario del Enólogo</h2>
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-3">
+                    {Object.entries(glossary).map(([term, definition]) => (
+                        <div key={term}>
+                            <h3 className="font-bold text-gray-900 dark:text-white">{term}</h3>
+                            <p className="text-gray-600 dark:text-gray-400">{definition}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+               <ClassificationTable title="Clasificación por Azúcar" data={sugarClassifications} icon={<Percent size={22} className="text-purple-500"/>} />
+               <ClassificationTable title="Clasificación por Azúcar (Espumosos)" data={sparklingClassifications} icon={<Sparkles size={22} className="text-amber-500"/>} />
+            </div>
+            <ClassificationTable title="Clasificación por Grado Alcohólico" data={alcoholClassifications} icon={<TestTube2 size={22} className="text-red-500"/>} />
+        </div>
+    );
+};
+
+const AjustesView = ({ theme, setTheme, onImport, onExport }) => {
+    const fileInputRef = useRef(null);
+
+    const handleImportClick = () => {
+        fileInputRef.current.click();
+    };
+
+    const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                onImport(data);
+            } catch (error) {
+                alert(`Error al leer el archivo JSON: ${error.message}`);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = null; // Reset input
     };
 
     return (
-        <div className="space-y-4">
-            <p>Selecciona las secciones que deseas incluir en el informe PDF.</p>
-            <label className="flex items-center gap-2">
-                <input type="checkbox" name="includeDetails" checked={options.includeDetails} onChange={handleCheckboxChange} className="rounded"/>
-                <span>Detalles Iniciales del Lote</span>
-            </label>
-            <label className="flex items-center gap-2">
-                <input type="checkbox" name="includeIngredients" checked={options.includeIngredients} onChange={handleCheckboxChange} className="rounded"/>
-                <span>Lista de Ingredientes y Concentraciones</span>
-            </label>
-            <label className="flex items-center gap-2">
-                <input type="checkbox" name="includeLog" checked={options.includeLog} onChange={handleCheckboxChange} className="rounded"/>
-                <span>Registro de Fermentación Completo</span>
-            </label>
-            <div className="flex justify-end gap-4 pt-4">
-                <button onClick={onCancel} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600">Cancelar</button>
-                <button onClick={() => onConfirm(options)} disabled={isExporting} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:bg-gray-400">
-                    {isExporting ? 'Generando...' : 'Generar PDF'}
-                </button>
+        <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Ajustes</h1>
+            <div className="space-y-6 max-w-2xl">
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg">
+                    <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">Tema de la Aplicación</h2>
+                    <div className="flex items-center gap-4">
+                        <p className="text-gray-600 dark:text-gray-300">Selecciona tu tema preferido:</p>
+                        <button onClick={() => setTheme('light')} className={`p-2 rounded-full ${theme === 'light' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}><Sun /></button>
+                        <button onClick={() => setTheme('dark')} className={`p-2 rounded-full ${theme === 'dark' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}><Moon /></button>
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg">
+                    <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">Portabilidad de Datos</h2>
+                    <p className="text-gray-600 dark:text-gray-300 mb-4">Importa o exporta todos tus datos (lotes e inventario) en formato JSON.</p>
+                    <div className="flex gap-4">
+                         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+                        <button onClick={handleImportClick} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <Upload size={18} /> Importar desde JSON
+                        </button>
+                        <button onClick={onExport} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            <Download size={18} /> Exportar a JSON
+                        </button>
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg">
+                    <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">Almacenamiento de Datos</h2>
+                    <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                         <Info size={20} className="text-blue-500 flex-shrink-0 mt-1" />
+                         <p className="text-sm text-blue-800 dark:text-blue-200">
+                             Tus datos se guardan automáticamente en el almacenamiento de tu navegador. No es necesario seleccionar una carpeta. Para crear copias de seguridad o mover tus datos a otro dispositivo, utiliza la función de "Exportar a JSON".
+                         </p>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -524,6 +647,7 @@ const PdfExportOptions = ({ onConfirm, onCancel, isExporting }) => {
 
 const AIReportView = ({ response }) => {
     const sections = useMemo(() => {
+        if (!response) return [];
         const parsed = {
             estado: { title: "Estado Actual", icon: <CheckCircle className="text-green-500"/>, content: "No disponible." },
             cata: { title: "Notas de Cata", icon: <Beaker className="text-yellow-500"/>, content: "No disponible." },
@@ -565,404 +689,16 @@ const AIReportView = ({ response }) => {
 };
 
 
-// --- VISTAS PRINCIPALES ---
-const LotesView = ({ lotes, setLotes, inventory, setInventory, onAnalyze, onExportPDF }) => {
-    const [isCreating, setIsCreating] = useState(false);
-    const [selectedLote, setSelectedLote] = useState(null);
-
-    const handleSaveLote = (newLote) => {
-        setLotes(prev => [...prev, newLote]);
-        setIsCreating(false);
-    };
-
-    const handleUpdateLote = (updatedLote) => {
-        setLotes(prev => prev.map(l => l.id === updatedLote.id ? updatedLote : l));
-    };
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'En Fermentación': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-            case 'Completado': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-            case 'En Preparación': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-        }
-    };
-
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Gestión de Lotes</h1>
-                <button onClick={() => setIsCreating(true)} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition-colors">
-                    <Plus size={20} /> Crear Lote
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {lotes.map(lote => (
-                    <div key={lote.id} onClick={() => setSelectedLote(lote)} className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all cursor-pointer">
-                        <div className="flex justify-between items-start">
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{lote.name}</h2>
-                            <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${getStatusColor(lote.status)}`}>{lote.status}</span>
-                        </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Creado: {lote.creationDate}</p>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600 dark:text-gray-300">SG Actual: <span className="font-semibold">{lote.fermentationLog[lote.fermentationLog.length - 1].sg}</span></span>
-                            <span className="text-gray-600 dark:text-gray-300">Temp: <span className="font-semibold">{lote.fermentationLog[lote.fermentationLog.length - 1].temp}°C</span></span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            <Modal isOpen={isCreating} onClose={() => setIsCreating(false)} title="Crear Nuevo Lote">
-                <CrearLoteForm onSave={handleSaveLote} onClose={() => setIsCreating(false)} inventory={inventory} onInventoryUpdate={setInventory} />
-            </Modal>
-            
-            <Modal isOpen={!!selectedLote} onClose={() => setSelectedLote(null)} title={`Detalle del Lote: ${selectedLote?.name}`}>
-                {selectedLote && <LoteDetalle lote={selectedLote} onUpdate={handleUpdateLote} onClose={() => setSelectedLote(null)} onAnalyze={onAnalyze} onExportPDF={onExportPDF} />}
-            </Modal>
-        </div>
-    );
-};
-
-const InventarioView = ({ inventory, setInventory }) => {
-    const [isAdding, setIsAdding] = useState(false);
-
-    const handleSaveNewIngredient = (newItem) => {
-        setInventory(prev => [...prev, newItem]);
-        setIsAdding(false);
-    };
-
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Inventario</h1>
-                <button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition-colors">
-                    <Plus size={20} /> Añadir Artículo
-                </button>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                            <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Artículo</th>
-                            <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Marca</th>
-                            <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Cantidad</th>
-                            <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Vencimiento</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800">
-                        {inventory.map(item => (
-                            <tr key={item.id} className="border-b border-gray-200 dark:border-gray-700">
-                                <td className="p-4 text-gray-900 dark:text-white">{item.name}</td>
-                                <td className="p-4 text-gray-600 dark:text-gray-300">{item.brand}</td>
-                                <td className="p-4 text-gray-600 dark:text-gray-300">{item.quantity} {item.unit}</td>
-                                <td className="p-4 text-gray-600 dark:text-gray-300">{item.expiry}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            <Modal isOpen={isAdding} onClose={() => setIsAdding(false)} title="Añadir Artículo al Inventario">
-                <CrearIngredienteModal onSave={handleSaveNewIngredient} onClose={() => setIsAdding(false)} />
-            </Modal>
-        </div>
-    );
-};
-
-const LevadurasView = () => (
-    <div>
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-4">Análisis de Levaduras</h1>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-            <p className="text-gray-600 dark:text-gray-300">Esta sección permitirá analizar y predecir el comportamiento de diferentes cepas de levadura. Podrás registrar datos de tus fermentaciones para construir un perfil histórico de cada cepa, o introducir datos manualmente para simular resultados teóricos. Es una herramienta educativa y de planificación para optimizar tus vinos.</p>
-            <div className="mt-6 p-4 bg-indigo-50 dark:bg-indigo-900/50 rounded-lg text-center">
-                <FlaskConical className="mx-auto text-indigo-500 mb-2" size={40} />
-                <p className="font-semibold text-indigo-800 dark:text-indigo-200">Característica en desarrollo.</p>
-            </div>
-        </div>
-    </div>
-);
-
-const PrimingCalculator = () => {
-    const [volume, setVolume] = useState('');
-    const [temp, setTemp] = useState('');
-    const [co2, setCo2] = useState('');
-    const [sugarNeeded, setSugarNeeded] = useState(null);
-
-    const calculateSugar = () => {
-        const vol = parseFloat(volume);
-        const t = parseFloat(temp);
-        const targetCO2 = parseFloat(co2);
-
-        if (vol > 0 && t >= 0 && targetCO2 > 0) {
-            // CO2 residual en el vino basado en la temperatura (fórmula simplificada)
-            const residualCO2 = 3.0378 - (0.050062 * t) + (0.00026555 * t * t);
-            const co2ToAdd = targetCO2 - residualCO2;
-            // Se necesitan ~4g de azúcar por litro para 1 vol de CO2
-            const sugar = co2ToAdd * 4 * vol;
-            setSugarNeeded(sugar.toFixed(2));
-        } else {
-            setSugarNeeded(null);
-        }
-    };
-
-    return (
-        <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Calcula la cantidad de azúcar necesaria para la segunda fermentación en botella y lograr el nivel de carbonatación deseado.</p>
-            <input type="text" placeholder="Volumen del lote (L)" value={volume} onChange={e => setVolume(parseNumericInput(e.target.value))} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2"/>
-            <input type="text" placeholder="Temperatura del vino (°C)" value={temp} onChange={e => setTemp(parseNumericInput(e.target.value))} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2"/>
-            <input type="text" placeholder="Volúmenes de CO2 deseados (ej. 2.5)" value={co2} onChange={e => setCo2(parseNumericInput(e.target.value))} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2"/>
-            <button onClick={calculateSugar} className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white">Calcular</button>
-            {sugarNeeded !== null && (
-                <div className="p-4 bg-green-100 dark:bg-green-900/50 rounded-lg text-center">
-                    <p className="text-green-800 dark:text-green-200">Necesitarás aproximadamente</p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-300">{sugarNeeded} gramos</p>
-                    <p className="text-green-800 dark:text-green-200">de azúcar de maíz (dextrosa).</p>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const VinopediaView = () => {
-    const [activeTab, setActiveTab] = useState('glosario');
-    const glossary = {
-        "Mosto": "Zumo de fruta (generalmente uva) que aún no ha fermentado. Es la base de cualquier vino.",
-        "Brix (°Bx)": "Medida del contenido de azúcar en una solución. Fundamental para estimar el alcohol potencial.",
-        "Gravedad Específica (SG)": "Densidad de un líquido en comparación con la del agua. Disminuye a medida que el azúcar se convierte en alcohol.",
-        "Trasiego": "Transferir el vino de un recipiente a otro para separarlo de los sedimentos (lías), clarificándolo.",
-        "Lías": "Levaduras muertas y otros sólidos que se depositan en el fondo tras la fermentación. Pueden aportar complejidad si se gestionan bien (bâtonnage).",
-        "Enzima Péctica": "Aditivo que se usa en vinos de frutas para romper la pectina, clarificar el mosto y mejorar la extracción de jugo y color.",
-        "Acidez Total (AT)": "Medida de todos los ácidos presentes en el vino (tartárico, málico, cítrico, etc.). Es crucial para el equilibrio, sabor y estabilidad del vino.",
-        "Taninos": "Compuestos que aportan estructura, amargor y astringencia (sensación de sequedad en la boca). Provienen de las pieles y semillas de las uvas, o de frutas como la granada o el caqui.",
-        "Licor de Tiraje": "(Vinos espumosos) Mezcla de vino base, azúcar y levaduras que se añade para iniciar la segunda fermentación en botella, creando la carbonatación.",
-        "Licor de Expedición": "(Vinos espumosos) Dosis de vino y azúcar que se añade tras el degüelle para ajustar el nivel de dulzor final del vino espumoso (Brut, Sec, etc.).",
-        "Degüelle": "(Vinos espumosos) Proceso de expulsar las lías congeladas del cuello de la botella después de la segunda fermentación."
-    };
-    const fruitWineTips = [
-        "Usa siempre enzima péctica con frutas como manzanas, peras o bayas para evitar turbidez.",
-        "Mide y ajusta la acidez. Muchas frutas no tienen la acidez natural de la uva, por lo que necesitarás añadir ácido tartárico, cítrico o una mezcla.",
-        "No temas añadir taninos. Un poco de tanino en polvo (o incluso té negro fuerte) puede dar a un vino de frutas el cuerpo que le falta.",
-        "La nutrición de la levadura es clave. Los mostos de frutas a menudo carecen de los nutrientes necesarios para una fermentación saludable. Usa un buen nutriente."
-    ];
-    const coveninParams = {
-        "Acidez Volátil (expresada en Ácido Acético)": "Máximo 1.00 g/L para vinos de mesa, y 1.20 g/L para vinos licorosos. Una acidez volátil alta puede indicar contaminación por bacterias acéticas (vinagre).",
-        "Anhídrido Sulfuroso Total (SO2)": "Máximo 0.25 g/L (250 mg/L). El SO2 es un conservante y antioxidante crucial, pero en exceso puede causar aromas desagradables y dolores de cabeza.",
-        "Ácido Sórbico": "Máximo 0.20 g/L. Se usa como conservante para inhibir la refermentación de levaduras en vinos dulces, pero no es efectivo contra bacterias.",
-        "Grado Alcohólico (Vinos de Mesa)": "Debe estar entre 7° y 14° G.L. (Gay-Lussac), que equivale a % de alcohol por volumen."
-    };
-    const sugarClassifications = [
-        { name: 'Seco', range: 'Hasta 5 g/L' },
-        { name: 'Semiseco o Abocado', range: '> 5 a 55 g/L' },
-        { name: 'Dulce o Generoso', range: '> 55 g/L' },
-    ];
-     const sparklingClassifications = [
-        { name: 'Natural o Nature', range: '0 a 6 g/L' },
-        { name: 'Brut', range: '> 6 a 15 g/L' },
-        { name: 'Semiseco o Demi-Sec', range: '> 15 a 45 g/L' },
-        { name: 'Dulce', range: '> 45 g/L' },
-    ];
-    const alcoholClassifications = [
-        { name: 'Vino de Mesa', range: '7° a 14° G.L.'},
-        { name: 'Vino Licoroso', range: '> 14° a 20° G.L.'},
-        { name: 'Vino Compuesto', range: '> 14° a 20° G.L.'},
-        { name: 'Vino Desalcoholizado', range: 'Hasta 5° G.L.'},
-        { name: 'Vino Soda', range: '3° a 5° G.L.'},
-    ];
-
-    const TabButton = ({ id, label }) => (
-        <button onClick={() => setActiveTab(id)} className={`px-4 py-2 text-sm font-medium rounded-lg ${activeTab === id ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
-            {label}
-        </button>
-    );
-    
-    const ClassificationTable = ({ title, data, icon }) => (
-        <div>
-            <h3 className="flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">{icon}{title}</h3>
-            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                <table className="w-full">
-                    <thead className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Clasificación</th>
-                            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Rango</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800">
-                        {data.map(c => (
-                            <tr key={c.name} className="border-t border-gray-200 dark:border-gray-700">
-                                <td className="px-4 py-2 text-sm font-medium text-gray-800 dark:text-gray-200">{c.name}</td>
-                                <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{c.range}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-
-    return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Vinopedia</h1>
-            <div className="flex space-x-2 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4 overflow-x-auto">
-                <TabButton id="glosario" label="Glosario"/>
-                <TabButton id="consejos" label="Consejos"/>
-                <TabButton id="calculadoras" label="Calculadoras"/>
-                <TabButton id="normativa" label="Normativa"/>
-            </div>
-
-            {activeTab === 'glosario' && (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                    <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Glosario del Enólogo</h2>
-                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-3">
-                        {Object.entries(glossary).map(([term, definition]) => (
-                            <div key={term}>
-                                <h3 className="font-bold text-gray-900 dark:text-white">{term}</h3>
-                                <p className="text-gray-600 dark:text-gray-400">{definition}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-            {activeTab === 'consejos' && (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                    <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Consejos para Vinos de Frutas</h2>
-                     <ul className="space-y-4">
-                        {fruitWineTips.map((tip, index) => (
-                            <li key={index} className="flex gap-3">
-                                <CheckCircle className="text-green-500 mt-1 flex-shrink-0" size={20}/>
-                                <span className="text-gray-600 dark:text-gray-400">{tip}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-            {activeTab === 'calculadoras' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="flex items-center gap-2 text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4"><Calculator size={24}/>Calculadora de Taponado (Priming)</h2>
-                        <PrimingCalculator />
-                    </div>
-                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="flex items-center gap-2 text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4"><Sparkles size={24}/>Guía de Degüelle</h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">El degüelle es el proceso de quitar el sedimento de levadura de la botella después de la segunda fermentación. Sigue estos pasos:</p>
-                        <ol className="list-decimal list-inside space-y-2 mt-4 text-sm text-gray-600 dark:text-gray-400">
-                            <li>Enfría las botellas boca abajo a casi punto de congelación (2-4°C) durante varias horas. Esto compacta el sedimento en el tapón.</li>
-                            <li>Manteniendo la botella invertida, sumerge el cuello en una solución de salmuera congelante (-20°C) por unos minutos para congelar el sedimento en un tapón de hielo.</li>
-                            <li>Voltea la botella a su posición normal y quita con cuidado el tapón corona. La presión interna expulsará el tapón de hielo con el sedimento.</li>
-                            <li>Rellena rápidamente el espacio vacío con el licor de expedición y coloca el corcho y bozal definitivos.</li>
-                        </ol>
-                    </div>
-                </div>
-            )}
-             {activeTab === 'normativa' && (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                    <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Parámetros y Clasificación (Según COVENIN 3342-97)</h2>
-                    <div className="space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                           <ClassificationTable title="Por Azúcar (Vinos Tranquilos)" data={sugarClassifications} icon={<Percent size={22} className="text-purple-500"/>} />
-                           <ClassificationTable title="Por Azúcar (Vinos Espumosos)" data={sparklingClassifications} icon={<Sparkles size={22} className="text-amber-500"/>} />
-                        </div>
-                        <ClassificationTable title="Por Grado Alcohólico" data={alcoholClassifications} icon={<TestTube2 size={22} className="text-red-500"/>} />
-                        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">Otros Parámetros Clave</h3>
-                             <div className="space-y-4">
-                                {Object.entries(coveninParams).map(([param, desc]) => (
-                                    <div key={param}>
-                                        <h4 className="font-bold text-gray-900 dark:text-white">{param}</h4>
-                                        <p className="text-gray-600 dark:text-gray-400 text-sm">{desc}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const AjustesView = ({ theme, setTheme, onImport, onExport }) => {
-    const fileInputRef = useRef(null);
-
-    const handleImportClick = () => {
-        fileInputRef.current.click();
-    };
-
-    const handleFileChange = (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = JSON.parse(e.target.result);
-                if (data.lotes && data.inventory) {
-                    onImport(data);
-                    alert("Datos importados con éxito!");
-                } else {
-                    alert("Error: El archivo JSON no tiene el formato esperado (necesita las claves 'lotes' e 'inventory').");
-                }
-            } catch (error) {
-                alert(`Error al leer el archivo JSON: ${error.message}`);
-            }
-        };
-        reader.readAsText(file);
-        event.target.value = null; // Reset input
-    };
-
-    return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Ajustes</h1>
-            <div className="space-y-6">
-                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg">
-                    <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">Tema de la Aplicación</h2>
-                    <div className="flex items-center gap-4">
-                        <p className="text-gray-600 dark:text-gray-300">Selecciona tu tema preferido:</p>
-                        <button onClick={() => setTheme('light')} className={`p-2 rounded-full ${theme === 'light' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}><Sun /></button>
-                        <button onClick={() => setTheme('dark')} className={`p-2 rounded-full ${theme === 'dark' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}><Moon /></button>
-                    </div>
-                </div>
-                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg">
-                    <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">Portabilidad de Datos</h2>
-                    <p className="text-gray-600 dark:text-gray-300 mb-4">Importa o exporta todos tus datos (lotes e inventario) en formato JSON.</p>
-                    <div className="flex gap-4">
-                         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                        <button onClick={handleImportClick} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                            <Upload size={18} /> Importar desde JSON
-                        </button>
-                        <button onClick={onExport} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                            <Download size={18} /> Exportar a JSON
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- COMPONENTE PRINCIPAL DE LA APP ---
+// --- MAIN APP COMPONENT ---
 export default function App() {
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useStickyState('light', 'vinoapp-theme');
   const [view, setView] = useState('lotes');
-  const [lotes, setLotes] = useState(initialLots);
-  const [inventory, setInventory] = useState(initialInventory);
+  const [lotes, setLotes] = useStickyState(initialLots, "vinoapp-lotes");
+  const [inventory, setInventory] = useStickyState(initialInventory, "vinoapp-inventory");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [aiResponse, setAiResponse] = useState('');
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowWelcome(false), 5000);
-    return () => clearTimeout(timer);
-  }, []);
-  
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [theme]);
 
   const handleAnalyzeWithAI = async (lote) => {
     setIsAiModalOpen(true);
@@ -1011,18 +747,23 @@ export default function App() {
         setIsLoadingAi(false);
     }
   };
-  
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
   const handleImportData = (data) => {
-    setLotes(data.lotes);
-    setInventory(data.inventory);
+    if (data.lotes) setLotes(data.lotes);
+    if (data.inventory) setInventory(data.inventory);
+    alert("Datos importados con éxito.");
   };
 
   const handleExportData = () => {
-    const data = {
-        lotes,
-        inventory,
-        exportDate: new Date().toISOString()
-    };
+    const data = { lotes, inventory, exportDate: new Date().toISOString() };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
@@ -1035,57 +776,44 @@ export default function App() {
   const menuItems = [
     { id: 'lotes', label: 'Lotes', icon: BarChart },
     { id: 'inventario', label: 'Inventario', icon: Package },
-    { id: 'levaduras', label: 'Levaduras', icon: FlaskConical },
     { id: 'vinopedia', label: 'Vinopedia', icon: Book },
     { id: 'ajustes', label: 'Ajustes', icon: Settings },
   ];
 
   const renderView = () => {
     switch (view) {
-      case 'lotes': return <LotesView lotes={lotes} setLotes={setLotes} inventory={inventory} setInventory={setInventory} onAnalyze={handleAnalyzeWithAI} />;
+      case 'lotes': return <LotesView lotes={lotes} setLotes={setLotes} inventory={inventory} onAnalyze={handleAnalyzeWithAI} />;
       case 'inventario': return <InventarioView inventory={inventory} setInventory={setInventory} />;
-      case 'levaduras': return <LevadurasView />;
       case 'vinopedia': return <VinopediaView />;
       case 'ajustes': return <AjustesView theme={theme} setTheme={setTheme} onImport={handleImportData} onExport={handleExportData} />;
-      default: return <LotesView lotes={lotes} setLotes={setLotes} inventory={inventory} setInventory={setInventory} onAnalyze={handleAnalyzeWithAI} />;
+      default: return <LotesView lotes={lotes} setLotes={setLotes} inventory={inventory} onAnalyze={handleAnalyzeWithAI} />;
     }
   };
 
   return (
-    <div className={`flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans transition-colors duration-300`}>
-      {showWelcome && <WelcomeScreen theme={theme} />}
+    <div className={`flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans`}>
       <aside className={`bg-white dark:bg-gray-800 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className={`flex items-center p-4 h-16 border-b border-gray-200 dark:border-gray-700 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           <div className={`flex items-center gap-2 ${!isSidebarOpen && 'hidden'}`}>
             <Droplet className="text-indigo-500" />
             <span className="text-xl font-bold">VinoApp</span>
           </div>
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700">
-            <SlidersHorizontal size={20} />
-          </button>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"><SlidersHorizontal size={20} /></button>
         </div>
         <nav className="flex-1 px-4 py-4 space-y-2">
           {menuItems.map(item => (
-            <a
-              key={item.id}
-              href="#"
-              onClick={(e) => { e.preventDefault(); setView(item.id); }}
-              className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${view === item.id ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-            >
+            <a key={item.id} href="#" onClick={(e) => { e.preventDefault(); setView(item.id); }}
+              className={`flex items-center gap-3 p-3 rounded-lg ${view === item.id ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
               <item.icon size={22} />
               <span className={`${!isSidebarOpen && 'hidden'}`}>{item.label}</span>
             </a>
           ))}
         </nav>
       </aside>
-
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-          {renderView()}
-        </div>
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+        {renderView()}
       </main>
-
-      <Modal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} title="Análisis con IA de Gemini">
+       <Modal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} title="Análisis con IA de Gemini">
         {isLoadingAi ? (
           <div className="text-center p-8">
             <Bot size={48} className="animate-pulse text-purple-500 mx-auto mb-4" />
