@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BarChart, Droplet, Beaker, FlaskConical, Sun, Moon, FileText, Bot, Plus, X, ChevronDown, Book, Package, SlidersHorizontal, Settings, Trash2, Upload, Download, AlertCircle, CheckCircle, Info, Wind, Sparkles, Calculator, Percent, TestTube2, ClipboardList, LogIn, LogOut, RefreshCw, Edit, Save, Thermometer, Activity, Pencil } from 'lucide-react';
+import { BarChart, Droplet, Beaker, FlaskConical, Sun, Moon, FileText, Bot, Plus, X, ChevronDown, Book, Package, SlidersHorizontal, Settings, Trash2, Upload, Download, AlertCircle, CheckCircle, Info, Wind, Sparkles, Calculator, Percent, TestTube2, ClipboardList, LogIn, LogOut, RefreshCw, Edit, Save, Thermometer, Activity } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Bar } from 'recharts';
 
 // --- HOOK FOR LOCALSTORAGE PERSISTENCE ---
@@ -38,7 +38,7 @@ const initialLots = [
     id: 1,
     name: 'Merlot Experimental 2025',
     creationDate: '2025-07-01',
-    yeast: { name: 'EC-1118', quantity: 10, unit: 'g' },
+    yeast: 'EC-1118',
     mosto: { pulpa: 20, pulpaBrix: 22, agua: 5, ph: 3.5 },
     ajustes: { azucar: 1, sgInicial: 1.090, bxInicial: 21.8, tempInicial: 22 },
     ingredientes: [
@@ -87,11 +87,7 @@ const CrearItemInventarioModal = ({ onSave, onClose, itemToEdit }) => {
     const [item, setItem] = useState({ name: '', brand: '', quantity: '', unit: 'g', expiry: '' });
 
     useEffect(() => {
-        if (itemToEdit) {
-            setItem(itemToEdit);
-        } else {
-            setItem({ name: '', brand: '', quantity: '', unit: 'g', expiry: '' });
-        }
+        if (itemToEdit) setItem(itemToEdit);
     }, [itemToEdit]);
     
     const handleSave = (e) => {
@@ -119,37 +115,21 @@ const CrearItemInventarioModal = ({ onSave, onClose, itemToEdit }) => {
 };
 
 
-const CrearLoteForm = ({ onSave, onClose, inventory, setInventory, batchToEdit }) => {
+const CrearLoteForm = ({ onSave, onClose, inventory, batchToEdit }) => {
   const [lote, setLote] = useState({
     name: '',
     creationDate: new Date().toISOString().split('T')[0],
     mosto: { pulpa: '', pulpaBrix: '', agua: '', ph: '' },
     ajustes: { azucar: '', sgInicial: '', bxInicial: '', tempInicial: '' },
     ingredientes: [],
-    yeast: { name: '', quantity: '', unit: 'g' },
+    yeast: '',
   });
-  const [isCreatingIngredient, setIsCreatingIngredient] = useState(false);
 
   useEffect(() => {
     if (batchToEdit) {
         setLote(batchToEdit);
     }
   }, [batchToEdit]);
-
-  const calculations = useMemo(() => {
-    const pulpaKg = parseFloat(lote.mosto.pulpa) || 0;
-    const pulpaBrix = parseFloat(lote.mosto.pulpaBrix) || 0;
-    const aguaL = parseFloat(lote.mosto.agua) || 0;
-    const azucarKg = parseFloat(lote.ajustes.azucar) || 0;
-
-    const azucarEnPulpaKg = pulpaKg * (pulpaBrix / 100);
-    const azucarTotalKg = azucarEnPulpaKg + azucarKg;
-    const pesoTotalKg = pulpaKg + aguaL + azucarKg;
-    const brixEstimado = pesoTotalKg > 0 ? (azucarTotalKg / pesoTotalKg) * 100 : 0;
-    const alcoholPotencial = brixEstimado * 0.57;
-
-    return { brixEstimado, alcoholPotencial };
-  }, [lote.mosto, lote.ajustes.azucar]);
 
   const handleInputChange = (category, field, value) => {
     const parsedValue = parseNumericInput(value);
@@ -161,10 +141,6 @@ const CrearLoteForm = ({ onSave, onClose, inventory, setInventory, batchToEdit }
   };
 
   const handleIngredienteChange = (index, field, value) => {
-    if (value === 'CREATE_NEW') {
-        setIsCreatingIngredient(true);
-        return;
-    }
     const newIngredientes = [...lote.ingredientes];
     newIngredientes[index][field] = value;
     const selectedItem = inventory.find(item => item.name === value);
@@ -172,15 +148,6 @@ const CrearLoteForm = ({ onSave, onClose, inventory, setInventory, batchToEdit }
     setLote(prev => ({ ...prev, ingredientes: newIngredientes }));
   };
   
-  const handleYeastChange = (field, value) => {
-      setLote(prev => ({...prev, yeast: {...prev.yeast, [field]: value}}));
-  };
-
-  const handleSaveNewIngredient = (newIngredient) => {
-      setInventory(prev => [...prev, newIngredient]);
-      setIsCreatingIngredient(false);
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     const loteData = batchToEdit ? { ...lote } : {
@@ -200,7 +167,6 @@ const CrearLoteForm = ({ onSave, onClose, inventory, setInventory, batchToEdit }
   };
   
   return (
-    <>
     <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium">Nombre del Lote</label>
@@ -212,39 +178,13 @@ const CrearLoteForm = ({ onSave, onClose, inventory, setInventory, batchToEdit }
                 <input type="text" placeholder="Pulpa/Fruta (kg)" value={lote.mosto.pulpa} onChange={e => handleInputChange('mosto', 'pulpa', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
                 <input type="text" placeholder="°Brix de la pulpa" value={lote.mosto.pulpaBrix} onChange={e => handleInputChange('mosto', 'pulpaBrix', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
                 <input type="text" placeholder="Agua añadida (L)" value={lote.mosto.agua} onChange={e => handleInputChange('mosto', 'agua', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                <input type="text" placeholder="Azúcar añadido (kg)" value={lote.ajustes.azucar} onChange={e => handleInputChange('ajustes', 'azucar', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-            </div>
-             <div className="mt-4 grid grid-cols-2 gap-4 text-center">
-                <div className="bg-indigo-50 dark:bg-indigo-900/50 p-3 rounded-lg">
-                    <p className="text-sm text-indigo-800 dark:text-indigo-200">Brix Final Estimado</p>
-                    <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">{calculations.brixEstimado.toFixed(2)}°</p>
-                </div>
-                <div className="bg-green-50 dark:bg-green-900/50 p-3 rounded-lg">
-                    <p className="text-sm text-green-800 dark:text-green-200">Alcohol Potencial (Final)</p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-300">{calculations.alcoholPotencial.toFixed(2)}%</p>
-                </div>
+                <input type="text" placeholder="pH inicial" value={lote.mosto.ph} onChange={e => handleInputChange('mosto', 'ph', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
             </div>
         </div>
         
-        <div className="p-4 border rounded-lg">
-            <h3 className="text-lg font-semibold mb-2">Mediciones Iniciales</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <input type="text" placeholder="Brix Inicial Medido" value={lote.ajustes.bxInicial} onChange={e => handleInputChange('ajustes', 'bxInicial', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                 <input type="text" placeholder="SG Inicial Medido" value={lote.ajustes.sgInicial} onChange={e => handleInputChange('ajustes', 'sgInicial', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                 <input type="text" placeholder="Temp. Inicial (°C)" value={lote.ajustes.tempInicial} onChange={e => handleInputChange('ajustes', 'tempInicial', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                 <input type="text" placeholder="pH inicial" value={lote.mosto.ph} onChange={e => handleInputChange('mosto', 'ph', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-            </div>
-        </div>
-
         <div className="p-4 border rounded-lg space-y-2">
             <h3 className="text-lg font-semibold">Levadura</h3>
-            <input type="text" placeholder="Nombre de la levadura (ej. EC-1118)" value={lote.yeast.name} onChange={e => handleYeastChange('name', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" required/>
-            <div className="flex gap-2">
-                <input type="text" placeholder="Cantidad" value={lote.yeast.quantity} onChange={e => handleYeastChange('quantity', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" required/>
-                <select value={lote.yeast.unit} onChange={e => handleYeastChange('unit', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2">
-                    <option>g</option><option>kg</option><option>mL</option><option>L</option>
-                </select>
-            </div>
+            <input type="text" placeholder="Nombre de la levadura (ej. EC-1118)" value={lote.yeast} onChange={e => setLote(prev => ({...prev, yeast: e.target.value}))} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" required/>
         </div>
 
         <div className="p-4 border rounded-lg">
@@ -254,7 +194,6 @@ const CrearLoteForm = ({ onSave, onClose, inventory, setInventory, batchToEdit }
                     <select value={ing.name} onChange={e => handleIngredienteChange(index, 'name', e.target.value)} className="flex-grow bg-gray-100 dark:bg-gray-700 rounded-md p-2">
                         <option value="">Seleccionar ingrediente</option>
                         {inventory.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
-                        <option value="CREATE_NEW" className="font-bold text-indigo-600">--- Crear Nuevo Ingrediente ---</option>
                     </select>
                     <input type="text" placeholder="Cant." value={ing.quantity} onChange={e => handleIngredienteChange(index, 'quantity', e.target.value)} className="w-20 bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
                     <input type="text" value={ing.unit} readOnly className="w-16 bg-gray-200 dark:bg-gray-600 rounded-md p-2 text-center" />
@@ -268,10 +207,6 @@ const CrearLoteForm = ({ onSave, onClose, inventory, setInventory, batchToEdit }
             <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white">{batchToEdit ? 'Actualizar Lote' : 'Guardar Lote'}</button>
         </div>
     </form>
-    <Modal isOpen={isCreatingIngredient} onClose={() => setIsCreatingIngredient(false)} title="Crear Nuevo Ingrediente">
-        <CrearItemInventarioModal onSave={handleSaveNewIngredient} onClose={() => setIsCreatingIngredient(false)} />
-    </Modal>
-    </>
   );
 };
 
@@ -282,40 +217,23 @@ const LoteDetalle = ({ lote, onUpdate, onClose, onAnalyze, onEdit, onDelete }) =
   const [activeTab, setActiveTab] = useState('grafica');
   const [graphMode, setGraphMode] = useState('sg');
 
-  const calculations = useMemo(() => {
+  const formulation = useMemo(() => {
     const pulpaKg = parseFloat(lote.mosto.pulpa) || 0;
-    const pulpaBrix = parseFloat(lote.mosto.pulpaBrix) || 0;
     const aguaL = parseFloat(lote.mosto.agua) || 0;
     const azucarKg = parseFloat(lote.ajustes.azucar) || 0;
-
-    const azucarEnPulpaKg = pulpaKg * (pulpaBrix / 100);
-    const azucarTotalKg = azucarEnPulpaKg + azucarKg;
-    const pesoTotalKg = pulpaKg + aguaL + azucarKg;
-    const brixEstimado = pesoTotalKg > 0 ? (azucarTotalKg / pesoTotalKg) * 100 : 0;
+    const totalVolumeL = aguaL + (pulpaKg * 0.7); // Approximation: 1kg fruit ~ 0.7L volume
+    const totalWeightKg = pulpaKg + aguaL + azucarKg;
     
-    const totalVolumeL = aguaL + pulpaKg + azucarKg;
-    const pulpaPercent = pesoTotalKg > 0 ? (pulpaKg / pesoTotalKg) * 100 : 0;
+    const pulpaPercent = totalWeightKg > 0 ? (pulpaKg / totalWeightKg) * 100 : 0;
 
     const getConcentration = (item) => {
-        if (!item || !item.quantity || totalVolumeL === 0) return 'N/A';
-        const quantity = parseFloat(item.quantity) || 0;
-        const unit = item.unit ? item.unit.toLowerCase() : 'g';
-
-        if (unit === 'ml' || unit === 'l') {
-            const amountInMl = unit === 'l' ? quantity * 1000 : quantity;
-            return `${(amountInMl / totalVolumeL).toFixed(2)} mL/L`;
-        } else {
-            const amountInGrams = unit === 'kg' ? quantity * 1000 : quantity;
-            return `${(amountInGrams / totalVolumeL).toFixed(2)} g/L`;
-        }
+        if (!item || totalVolumeL === 0) return 'N/A';
+        let amountInGrams = parseFloat(item.quantity) || 0;
+        if (item.unit === 'kg') amountInGrams *= 1000;
+        return `${(amountInGrams / totalVolumeL).toFixed(2)} g/L`;
     };
-    
-    const brixInicial = parseFloat(lote.ajustes.bxInicial) || brixEstimado;
-    const brixFinal = lote.fermentationLog.length > 0 ? parseFloat(lote.fermentationLog[lote.fermentationLog.length - 1].brix) : brixInicial;
-    const alcoholPotencial = brixInicial * 0.57; // Potential based on full attenuation
-    const alcoholActual = (brixInicial - brixFinal) * 0.57;
 
-    return { pulpaPercent, totalVolumeL, getConcentration, brixEstimado, alcoholPotencial, alcoholActual };
+    return { pulpaPercent, totalVolumeL, getConcentration };
   }, [lote]);
 
   const handleLogChange = (field, value) => {
@@ -354,25 +272,11 @@ const LoteDetalle = ({ lote, onUpdate, onClose, onAnalyze, onEdit, onDelete }) =
     if (!lote || !lote.fermentationLog) return [];
     return lote.fermentationLog.map(log => ({
         ...log,
-        sg: parseFloat(log.sg) || null,
-        brix: parseFloat(log.brix) || null,
-        temp: parseFloat(log.temp) || null
-    })).filter(p => p.sg !== null || p.brix !== null);
+        sg: parseFloat(log.sg) || 0,
+        brix: parseFloat(log.brix) || 0,
+        temp: parseFloat(log.temp) || 0
+    }));
   }, [lote.fermentationLog]);
-
-  const yAxisDomain = useMemo(() => {
-    if (graphData.length === 0) return ['auto', 'auto'];
-    
-    const values = graphData.map(p => p[graphMode]).filter(v => v !== null);
-    if (values.length === 0) return ['auto', 'auto'];
-
-    let dataMin = Math.min(...values);
-    let dataMax = Math.max(...values);
-
-    const margin = graphMode === 'sg' ? 0.005 : 1;
-    return [dataMin - margin, dataMax + margin];
-  }, [graphData, graphMode]);
-
 
   const TabButton = ({ id, label }) => (
     <button onClick={() => setActiveTab(id)} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
@@ -404,39 +308,28 @@ const LoteDetalle = ({ lote, onUpdate, onClose, onAnalyze, onEdit, onDelete }) =
                 <LineChart width={550} height={230} data={graphData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.2)" />
                     <XAxis dataKey="date" tickFormatter={(d) => new Date(d).toLocaleDateString()} />
-                    <YAxis yAxisId="left" dataKey={graphMode} tick={{ fill: '#8884d8' }} domain={yAxisDomain} allowDataOverflow />
+                    <YAxis yAxisId="left" dataKey={graphMode} tick={{ fill: '#8884d8' }} />
                     <YAxis yAxisId="right" orientation="right" dataKey="temp" tick={{ fill: '#82ca9d' }} />
                     <Tooltip />
                     <Legend />
-                    <Line yAxisId="left" type="monotone" dataKey={graphMode} name={graphMode.toUpperCase()} stroke="#8884d8" dot={false} connectNulls />
-                    <Line yAxisId="right" type="monotone" dataKey="temp" name="Temp (°C)" stroke="#82ca9d" dot={false} connectNulls />
+                    <Line yAxisId="left" type="monotone" dataKey={graphMode} name={graphMode.toUpperCase()} stroke="#8884d8" dot={false} />
+                    <Line yAxisId="right" type="monotone" dataKey="temp" name="Temp (°C)" stroke="#82ca9d" dot={false} />
                 </LineChart>
             </div>
         )}
 
         {activeTab === 'formulacion' && (
-            <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-4">
-                <div>
-                    <h4 className="text-lg font-semibold">Receta del Lote (Vol. ~{calculations.totalVolumeL.toFixed(2)}L)</h4>
-                    <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
-                        <li><b>Pulpa:</b> {lote.mosto.pulpa} kg ({calculations.pulpaPercent.toFixed(1)}% del peso)</li>
-                        <li><b>Agua:</b> {lote.mosto.agua} L</li>
-                        <li><b>Azúcar:</b> {lote.ajustes.azucar} kg</li>
-                        <li><b>Levadura ({lote.yeast.name}):</b> {lote.yeast.quantity} {lote.yeast.unit} ({calculations.getConcentration(lote.yeast)})</li>
-                        {lote.ingredientes.map((ing, i) => (
-                            <li key={i}><b>{ing.name}:</b> {ing.quantity} {ing.unit} ({calculations.getConcentration(ing)})</li>
-                        ))}
-                    </ul>
-                </div>
-                <div>
-                    <h4 className="text-lg font-semibold">Azúcares y Alcohol</h4>
-                     <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
-                        <li><b>Brix del Mosto (Estimado):</b> {calculations.brixEstimado.toFixed(2)}°</li>
-                        <li><b>Brix Inicial (Medido):</b> {lote.ajustes.bxInicial}°</li>
-                        <li><b>Alcohol Potencial (Final):</b> {calculations.alcoholPotencial.toFixed(2)}%</li>
-                        <li><b>Alcohol Actual:</b> {calculations.alcoholActual > 0 ? calculations.alcoholActual.toFixed(2) : '0.00'}%</li>
-                     </ul>
-                </div>
+            <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
+                <h4 className="text-lg font-semibold">Receta del Lote (Vol. ~{formulation.totalVolumeL.toFixed(2)}L)</h4>
+                <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                    <li><b>Pulpa:</b> {lote.mosto.pulpa} kg ({formulation.pulpaPercent.toFixed(1)}% del peso)</li>
+                    <li><b>Agua:</b> {lote.mosto.agua} L</li>
+                    <li><b>Azúcar:</b> {lote.ajustes.azucar} kg</li>
+                    <li><b>Levadura:</b> {lote.yeast}</li>
+                    {lote.ingredientes.map((ing, i) => (
+                        <li key={i}><b>{ing.name}:</b> {ing.quantity} {ing.unit} ({formulation.getConcentration(ing)})</li>
+                    ))}
+                </ul>
             </div>
         )}
 
@@ -444,36 +337,27 @@ const LoteDetalle = ({ lote, onUpdate, onClose, onAnalyze, onEdit, onDelete }) =
             <>
             <div className="mb-6">
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                    {lote.fermentationLog.map((log) => {
-                        const brixInicial = parseFloat(lote.ajustes.bxInicial) || calculations.brixEstimado;
-                        const alcoholEnPunto = (brixInicial - (parseFloat(log.brix) || 0)) * 0.57;
-                        return (
-                            <div key={log.id} className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-semibold">{new Date(log.date).toLocaleDateString()} - SG: {log.sg}, Brix: {log.brix}, Temp: {log.temp}°C</p>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">{log.notes}</p>
-                                    </div>
-                                    <div className="text-right flex-shrink-0 ml-4">
-                                        <p className="text-sm font-bold text-green-600">{alcoholEnPunto > 0 ? alcoholEnPunto.toFixed(2) : '0.00'}% ABV</p>
-                                        <div className="flex gap-2 justify-end mt-1">
-                                            <button onClick={() => setEditingLog(log)} className="p-1 text-blue-500 hover:text-blue-700"><Edit size={16}/></button>
-                                            <button onClick={() => handleDeleteLog(log.id)} className="p-1 text-red-500 hover:text-red-700"><Trash2 size={16}/></button>
-                                        </div>
-                                    </div>
-                                </div>
+                    {lote.fermentationLog.map((log) => (
+                        <div key={log.id} className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold">{new Date(log.date).toLocaleDateString()} - SG: {log.sg}, Brix: {log.brix}, Temp: {log.temp}°C</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">{log.notes}</p>
                             </div>
-                        );
-                    })}
+                            <div className="flex gap-2">
+                                <button onClick={() => setEditingLog(log)} className="p-1 text-blue-500 hover:text-blue-700"><Edit size={16}/></button>
+                                <button onClick={() => handleDeleteLog(log.id)} className="p-1 text-red-500 hover:text-red-700"><Trash2 size={16}/></button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
             <form onSubmit={handleSaveLog} className="p-4 border border-dashed rounded-lg space-y-3">
                 <h4 className="font-semibold">{editingLog ? 'Editando Registro' : 'Añadir Nuevo Registro'}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                     <input type="date" value={editingLog ? editingLog.date : newLog.date} onChange={e => handleLogChange('date', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                    <input type="text" placeholder="SG" value={editingLog ? editingLog.sg : newLog.sg} onChange={e => handleLogChange('sg', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
+                    <input type="text" placeholder="SG" value={editingLog ? editingLog.sg : newLog.sg} onChange={e => handleLogChange('sg', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
                     <input type="text" placeholder="Brix" value={editingLog ? editingLog.brix : newLog.brix} onChange={e => handleLogChange('brix', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                    <input type="text" placeholder="Temp °C" value={editingLog ? editingLog.temp : newLog.temp} onChange={e => handleLogChange('temp', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" required />
+                    <input type="text" placeholder="Temp °C" value={editingLog ? editingLog.temp : newLog.temp} onChange={e => handleLogChange('temp', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" required />
                 </div>
                 <textarea placeholder="Notas..." value={editingLog ? editingLog.notes : newLog.notes} onChange={e => handleLogChange('notes', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2 h-16"></textarea>
                 <div className="flex justify-end gap-2">
@@ -494,7 +378,7 @@ const LoteDetalle = ({ lote, onUpdate, onClose, onAnalyze, onEdit, onDelete }) =
   )
 }
 
-const LotesView = ({ lotes, setLotes, inventory, setInventory, onAnalyze }) => {
+const LotesView = ({ lotes, setLotes, inventory, onAnalyze }) => {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingBatch, setEditingBatch] = useState(null);
     const [selectedLote, setSelectedLote] = useState(null);
@@ -560,7 +444,7 @@ const LotesView = ({ lotes, setLotes, inventory, setInventory, onAnalyze }) => {
                                     <h2 className="text-xl font-bold text-gray-900 dark:text-white w-2/3">{lote.name}</h2>
                                     <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full h-min ${getStatusColor(lote.status)}`}>{lote.status}</span>
                                 </div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Levadura: <span className="font-semibold">{lote.yeast.name || lote.yeast || 'N/A'}</span></p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Levadura: <span className="font-semibold">{lote.yeast || 'N/A'}</span></p>
                             </div>
                             <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3 flex justify-around text-center">
                                 <div>
@@ -577,7 +461,7 @@ const LotesView = ({ lotes, setLotes, inventory, setInventory, onAnalyze }) => {
                 })}
             </div>
             <Modal isOpen={isFormOpen} onClose={() => {setIsFormOpen(false); setEditingBatch(null);}} title={editingBatch ? "Editar Lote" : "Crear Nuevo Lote"}>
-                <CrearLoteForm onSave={handleSaveLote} onClose={() => {setIsFormOpen(false); setEditingBatch(null);}} inventory={inventory} setInventory={setInventory} batchToEdit={editingBatch} />
+                <CrearLoteForm onSave={handleSaveLote} onClose={() => {setIsFormOpen(false); setEditingBatch(null);}} inventory={inventory} batchToEdit={editingBatch} />
             </Modal>
             <Modal isOpen={!!selectedLote} onClose={() => setSelectedLote(null)} title={`Detalle: ${selectedLote?.name}`}>
                 {selectedLote && <LoteDetalle lote={selectedLote} onUpdate={handleUpdateLote} onClose={() => setSelectedLote(null)} onAnalyze={onAnalyze} onEdit={handleEdit} onDelete={handleDelete} />}
@@ -588,66 +472,28 @@ const LotesView = ({ lotes, setLotes, inventory, setInventory, onAnalyze }) => {
 
 const InventarioView = ({ inventory, setInventory }) => {
     const [isAdding, setIsAdding] = useState(false);
-    const [editingItem, setEditingItem] = useState(null);
 
     const handleSaveItem = (item) => {
-        if (item.id) {
-            setInventory(prev => prev.map(i => i.id === item.id ? item : i));
-        } else {
-            setInventory(prev => [...prev, {...item, id: `item-${Date.now()}`}]);
-        }
+        setInventory(prev => [...prev.filter(i => i.id !== item.id), item]);
         setIsAdding(false);
-        setEditingItem(null);
-    };
-
-    const handleEditItem = (item) => {
-        setEditingItem(item);
-        setIsAdding(true);
-    };
-
-    const handleDeleteItem = (itemId) => {
-        if (window.confirm("¿Seguro que quieres eliminar este artículo?")) {
-            setInventory(prev => prev.filter(i => i.id !== itemId));
-        }
     };
     
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">Inventario</h1>
-                <button onClick={() => { setEditingItem(null); setIsAdding(true); }} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700">
+                <button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700">
                     <Plus size={20} /> Añadir Artículo
                 </button>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                            <th className="p-4">Artículo</th>
-                            <th className="p-4">Marca</th>
-                            <th className="p-4">Cantidad</th>
-                            <th className="p-4">Vencimiento</th>
-                            <th className="p-4">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {inventory.map(item => (
-                            <tr key={item.id} className="border-b">
-                                <td className="p-4">{item.name}</td>
-                                <td className="p-4">{item.brand}</td>
-                                <td className="p-4">{item.quantity} {item.unit}</td>
-                                <td className="p-4">{item.expiry}</td>
-                                <td className="p-4 flex gap-2">
-                                    <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800"><Pencil size={18}/></button>
-                                    <button onClick={() => handleDeleteItem(item.id)} className="p-2 text-red-600 hover:text-red-800"><Trash2 size={18}/></button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
+                    <thead className="bg-gray-50 dark:bg-gray-700"><tr className="bg-gray-50 dark:bg-gray-700"><th className="p-4">Artículo</th><th className="p-4">Marca</th><th className="p-4">Cantidad</th><th className="p-4">Vencimiento</th></tr></thead>
+                    <tbody>{inventory.map(item => (<tr key={item.id} className="border-b"><td className="p-4">{item.name}</td><td className="p-4">{item.brand}</td><td className="p-4">{item.quantity} {item.unit}</td><td className="p-4">{item.expiry}</td></tr>))}</tbody>
                 </table>
             </div>
-            <Modal isOpen={isAdding} onClose={() => setIsAdding(false)} title={editingItem ? "Editar Artículo" : "Añadir Artículo al Inventario"}>
-                <CrearItemInventarioModal onSave={handleSaveItem} onClose={() => setIsAdding(false)} itemToEdit={editingItem} />
+            <Modal isOpen={isAdding} onClose={() => setIsAdding(false)} title="Añadir Artículo al Inventario">
+                <CrearItemInventarioModal onSave={handleSaveItem} onClose={() => setIsAdding(false)} />
             </Modal>
         </div>
     );
@@ -786,12 +632,12 @@ const AjustesView = ({ theme, setTheme, onImport, onExport }) => {
                     </div>
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg">
-                    <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">Créditos</h2>
-                    <div className="text-gray-600 dark:text-gray-300">
-                        <p className="font-semibold">Samuel Chocron Fernández</p>
-                        <p>Docente-Investigador</p>
-                        <p>Instituto de Ciencia y Tecnología de Alimentos</p>
-                        <p>Universidad Central de Venezuela</p>
+                    <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">Almacenamiento de Datos</h2>
+                    <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                         <Info size={20} className="text-blue-500 flex-shrink-0 mt-1" />
+                         <p className="text-sm text-blue-800 dark:text-blue-200">
+                             Tus datos se guardan automáticamente en el almacenamiento de tu navegador. No es necesario seleccionar una carpeta. Para crear copias de seguridad o mover tus datos a otro dispositivo, utiliza la función de "Exportar a JSON".
+                         </p>
                     </div>
                 </div>
             </div>
@@ -859,14 +705,6 @@ export default function App() {
     setIsLoadingAi(true);
     setAiResponse('');
 
-    const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-
-    if (!apiKey) {
-        setAiResponse("Error: La clave de API de Gemini no está configurada. Por favor, añada la variable de entorno REACT_APP_GEMINI_API_KEY a su configuración de Vercel.");
-        setIsLoadingAi(false);
-        return;
-    }
-
     const prompt = `
       Eres un enólogo experto y asistente de IA. Tu tono es amigable y educativo.
       Analiza el siguiente lote de vino y proporciona un informe conciso y moderno en secciones claras.
@@ -886,6 +724,7 @@ export default function App() {
 
     try {
         const payload = { contents: [{ parts: [{ text: prompt }] }] };
+        const apiKey = ""; // La API Key se gestiona automáticamente en el entorno de ejecución
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
         
         const response = await fetch(apiUrl, {
@@ -943,7 +782,7 @@ export default function App() {
 
   const renderView = () => {
     switch (view) {
-      case 'lotes': return <LotesView lotes={lotes} setLotes={setLotes} inventory={inventory} setInventory={setInventory} onAnalyze={handleAnalyzeWithAI} />;
+      case 'lotes': return <LotesView lotes={lotes} setLotes={setLotes} inventory={inventory} onAnalyze={handleAnalyzeWithAI} />;
       case 'inventario': return <InventarioView inventory={inventory} setInventory={setInventory} />;
       case 'vinopedia': return <VinopediaView />;
       case 'ajustes': return <AjustesView theme={theme} setTheme={setTheme} onImport={handleImportData} onExport={handleExportData} />;
