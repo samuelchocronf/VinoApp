@@ -471,7 +471,7 @@ const LoteDetalle = ({ lote, onUpdate, onClose, onAnalyze, onEdit, onDelete }) =
                 <h4 className="font-semibold">{editingLog ? 'Editando Registro' : 'Añadir Nuevo Registro'}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                     <input type="date" value={editingLog ? editingLog.date : newLog.date} onChange={e => handleLogChange('date', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
-                    <input type="text" placeholder="SG" value={editingLog ? editingLog.sg : newLog.sg} onChange={e => handleLogChange('sg', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
+                    <input type="text" placeholder="SG" value={editingLog ? editingLog.sg : newLog.sg} onChange={e => handleLogChange('sg', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
                     <input type="text" placeholder="Brix" value={editingLog ? editingLog.brix : newLog.brix} onChange={e => handleLogChange('brix', e.target.value)} className="bg-gray-100 dark:bg-gray-700 rounded-md p-2" />
                     <input type="text" placeholder="Temp °C" value={editingLog ? editingLog.temp : newLog.temp} onChange={e => handleLogChange('temp', e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 rounded-md p-2" required />
                 </div>
@@ -591,7 +591,7 @@ const InventarioView = ({ inventory, setInventory }) => {
     const [editingItem, setEditingItem] = useState(null);
 
     const handleSaveItem = (item) => {
-        if (item.id) {
+        if (item.id && inventory.some(i => i.id === item.id)) {
             setInventory(prev => prev.map(i => i.id === item.id ? item : i));
         } else {
             setInventory(prev => [...prev, {...item, id: `item-${Date.now()}`}]);
@@ -859,10 +859,10 @@ export default function App() {
     setIsLoadingAi(true);
     setAiResponse('');
 
-    const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
     if (!apiKey) {
-        setAiResponse("Error: La clave de API de Gemini no está configurada. Por favor, añada la variable de entorno REACT_APP_GEMINI_API_KEY a su configuración de Vercel.");
+        setAiResponse("Error: La clave de API de Gemini no está configurada. Por favor, añada la variable de entorno NEXT_PUBLIC_GEMINI_API_KEY a su configuración de Vercel.");
         setIsLoadingAi(false);
         return;
     }
